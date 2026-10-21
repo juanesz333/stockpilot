@@ -13,7 +13,7 @@ CREATE TABLE products (
     stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
     min_stock INTEGER NOT NULL DEFAULT 0 CHECK (min_stock >= 0),
     active BOOLEAN NOT NULL DEFAULT TRUE, 
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE customers (
