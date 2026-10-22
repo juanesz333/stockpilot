@@ -1,13 +1,15 @@
+#lee el .env y entrega los datos ordenados 
 import os
 from dataclasses import dataclass
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-# El .env está en la raíz del proyecto
+# carga el archivo .env buscandolo en la raíz del proyecto
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
-
+#es una dataclass que solo guarda datos
+#Con frozen=true no se modificar despues de crarla 
 @dataclass(frozen=True)
 class DatabaseConfig:
     host: str
@@ -16,7 +18,9 @@ class DatabaseConfig:
     user: str
     password: str
 
-
+#lee las variables con os.environ[...]
+#si falta alguna variable lanza un error con el nombre
+#de la variable que falta
 def load_database_config() -> DatabaseConfig:
     try:
         return DatabaseConfig(
