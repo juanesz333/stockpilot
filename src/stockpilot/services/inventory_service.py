@@ -19,6 +19,7 @@ def register_movement(
     movement_type: str,
     quantity: int,
     reason: str | None = None,
+    sale_id: int | None = None,
 ) -> int:
     """Registra una entrada, salida o ajuste y devuelve el stock resultante.
 
@@ -62,9 +63,9 @@ def register_movement(
 
         conn.execute(
             "INSERT INTO inventory_movements "
-            "(product_id, movement_type, quantity, reason) "
-            "VALUES (%s, %s, %s, %s)",
-            (product_id, movement_type, delta, reason),
+            "(product_id, sale_id, movement_type, quantity, reason) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (product_id, sale_id, movement_type, delta, reason),
         )
         conn.execute(
             "UPDATE products SET stock = stock + %s WHERE id = %s",
