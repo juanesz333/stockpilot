@@ -17,7 +17,7 @@ def products(conn, category_id):
     register_movement(conn, "TST-S1", "IN", 10)
     register_movement(conn, "TST-S2", "IN", 10)
 
-
+#para no repetir código: ejecuta una consulta y devuleve el primer valor
 def count(conn, query, params=()):
     return conn.execute(query, params).fetchone()[0]
 
