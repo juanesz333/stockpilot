@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QMainWindow, QTabWidget
 
 from stockpilot.ui.products_view import ProductsView
+from stockpilot.ui.sales_view import SalesView
 
 
 class MainWindow(QMainWindow):
@@ -9,6 +10,18 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("StockPilot — Inventario y ventas")
         self.resize(1000, 600)
 
+        self.products_view = ProductsView()
+        self.sales_view = SalesView()
+
         tabs = QTabWidget()
-        tabs.addTab(ProductsView(), "Productos")  # (la pantalla, el texto de la pestaña)
+        tabs.addTab(self.products_view, "Productos")
+        tabs.addTab(self.sales_view, "Ventas")
+        tabs.currentChanged.connect(self.on_tab_changed)  # se avisa al cambiar de pestaña
         self.setCentralWidget(tabs)
+
+    def on_tab_changed(self, index: int):
+        """Al entrar a una pestaña, se recargan sus datos."""
+        if index == 0:
+            self.products_view.load_products()
+        elif index == 1:
+            self.sales_view.reload_data()
