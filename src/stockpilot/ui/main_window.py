@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QMainWindow, QTabWidget
 
 from stockpilot.ui.products_view import ProductsView
+from stockpilot.ui.reports_view import ReportsView
 from stockpilot.ui.sales_view import SalesView
 
 
@@ -12,10 +13,12 @@ class MainWindow(QMainWindow):
 
         self.products_view = ProductsView()
         self.sales_view = SalesView()
+        self.reports_view = ReportsView()
 
         tabs = QTabWidget()
         tabs.addTab(self.products_view, "Productos")
         tabs.addTab(self.sales_view, "Ventas")
+        tabs.addTab(self.reports_view, "Reportes")
         tabs.currentChanged.connect(self.on_tab_changed)  # se avisa al cambiar de pestaña
         self.setCentralWidget(tabs)
 
@@ -25,3 +28,5 @@ class MainWindow(QMainWindow):
             self.products_view.load_products()
         elif index == 1:
             self.sales_view.reload_data()
+        elif index == 2:
+            self.reports_view.load_report()
