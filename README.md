@@ -35,7 +35,7 @@ StockPilot resuelve un problema común en pequeños negocios: saber cuánto hay 
 
 | Productos | Ventas | Reportes |
 |---|---|---|
-| ![Productos](docs/screenshots/productos.png) | ![Ventas](docs/screenshots/ventas.png) | ![Reportes](docs/screenshots/reportes.png) |
+| ![productos](docs/screenshots/productos.png) | ![ventas](docs/screenshots/ventas.png) | ![reportes](docs/screenshots/reportes.png) |
 
 ## Requisitos
 
