@@ -35,7 +35,7 @@ StockPilot resuelve un problema común en pequeños negocios: saber cuánto hay 
 
 | Productos | Ventas | Reportes |
 |---|---|---|
-| ![productos](docs/screenshots/productos.png) | ![ventas](docs/screenshots/ventas.png) | ![reportes](docs/screenshots/reportes.png) |
+| ![Productos](docs/screenshots/productos.png) | ![Ventas](docs/screenshots/ventas.png) | ![Reportes](docs/screenshots/reportes.png) |
 
 ## Requisitos
 
@@ -93,282 +93,34 @@ Interfaz (ui)  →  Servicios  →  Repositorios  →  PostgreSQL
 
 ## Diagramas UML
 
-### Casos de uso
+La documentación UML completa vive en un archivo aparte: **[docs/uml.md](docs/uml.md)**. Estos son los diagramas y lo que explica cada uno:
 
-```mermaid
-flowchart LR
-    U(["👤 Usuario<br/>encargado de inventario"])
-
-    subgraph SYS["StockPilot"]
-        UC1([Buscar y consultar productos])
-        UC2([Crear producto])
-        UC3([Registrar entrada, salida o ajuste])
-        UC4([Armar carrito y confirmar venta])
-        UC5([Consultar reportes])
-        UC6([Descontar stock y guardar movimientos])
-    end
-
-    U --- UC1
-    U --- UC2
-    U --- UC3
-    U --- UC4
-    U --- UC5
-    UC4 -.->|«include»| UC6
-```
-
-### Componentes y dependencias entre capas
-
-```mermaid
-flowchart TB
-    subgraph UI["Interfaz (PySide6)"]
-        MW[MainWindow]
-        PV[ProductsView]
-        SV[SalesView]
-        RV[ReportsView]
-        PD[ProductDialog]
-        MD[MovementDialog]
-    end
-
-    subgraph SVC["Servicios (reglas de negocio)"]
-        PS[product_service]
-        IS[inventory_service]
-        SS[sale_service]
-    end
-
-    subgraph REPO["Repositorios"]
-        PR[product_repository]
-        CR[category_repository]
-        CUR[customer_repository]
-        RR[report_repository]
-    end
-
-    DB[(PostgreSQL)]
-
-    MW --> PV & SV & RV
-    PV --> PD & MD
-    PV --> PR
-    PD --> PS & CR
-    MD --> IS
-    SV --> SS & PR & CUR
-    RV --> RR
-    PS --> PR
-    SS --> IS
-    PR & CR & CUR & RR --> DB
-    IS & SS --> DB
-```
-
-Los servicios de inventario y ventas ejecutan sus propias consultas porque deben leer, validar y escribir dentro de una misma transacción con la fila del producto bloqueada.
-
-### Diagrama de clases: negocio y acceso a datos
-
-```mermaid
-classDiagram
-    direction LR
-
-    class Product {
-        <<dataclass>>
-        +int id
-        +int category_id
-        +str sku
-        +str name
-        +Decimal price
-        +int stock
-        +int min_stock
-        +bool active
-    }
-
-    class ProductRepository {
-        <<module>>
-        +list_products(conn, only_active) list~Product~
-        +get_by_sku(conn, sku) Product
-        +search(conn, text) list~Product~
-        +list_low_stock(conn) list~Product~
-        +create(conn, category_id, sku, name, price, min_stock) Product
-        +update_price(conn, sku, price) bool
-        +set_active(conn, sku, active) bool
-    }
-
-    class ProductService {
-        <<module>>
-        +create_product(conn, category_id, sku, name, price, min_stock) Product
-    }
-
-    class InventoryService {
-        <<module>>
-        +register_movement(conn, sku, movement_type, quantity, reason, sale_id) int
-    }
-
-    class SaleService {
-        <<module>>
-        +create_sale(conn, items, customer_id) tuple
-    }
-
-    class ReportRepository {
-        <<module>>
-        +run_report(conn, key) tuple
-    }
-
-    class Report {
-        <<dataclass>>
-        +str key
-        +str title
-        +str sql
-    }
-
-    class ProductError {
-        <<exception>>
-    }
-
-    class InventoryError {
-        <<exception>>
-    }
-
-    class SaleError {
-        <<exception>>
-    }
-
-    ProductRepository ..> Product : crea y devuelve
-    ProductService ..> ProductRepository : usa
-    SaleService ..> InventoryService : reutiliza register_movement
-    ReportRepository *-- Report : REPORTS
-    SaleError --|> InventoryError
-    ProductService ..> ProductError : lanza
-    InventoryService ..> InventoryError : lanza
-    SaleService ..> SaleError : lanza
-```
-
-### Secuencia: confirmar una venta
-
-```mermaid
-sequenceDiagram
-    actor U as Usuario
-    participant SV as SalesView
-    participant SS as sale_service
-    participant IS as inventory_service
-    participant DB as PostgreSQL
-
-    U->>SV: Confirmar venta
-    SV->>SS: create_sale(conn, items, customer_id)
-    SS->>SS: Validar carrito y sumar SKU repetidos
-    SS->>DB: BEGIN
-    opt Si se eligió un cliente
-        SS->>DB: Verificar que el cliente exista
-    end
-    SS->>DB: INSERT INTO sales
-    loop Por cada producto, en orden alfabético de SKU
-        SS->>IS: register_movement(sku, OUT, cantidad, sale_id)
-        IS->>DB: SELECT con FOR UPDATE, bloquea el producto
-        break Se rompe una regla (no existe, está desactivado o no alcanza el stock)
-            IS-->>SS: InventoryError
-            SS->>DB: ROLLBACK, se deshace todo
-            SS-->>SV: InventoryError
-            SV-->>U: Aviso con el motivo, el carrito se conserva
-        end
-        IS->>DB: INSERT en inventory_movements y UPDATE del stock
-        IS-->>SS: stock resultante
-        SS->>DB: Leer el precio actual e INSERT en sale_items
-    end
-    SS->>DB: UPDATE del total de la venta
-    SS->>DB: COMMIT
-    SS-->>SV: sale_id y total
-    SV-->>U: Venta registrada
-```
+| Diagrama | Qué muestra |
+|---|---|
+| [Vista de paquetes](docs/uml.md#1-vista-de-paquetes) | Qué módulo depende de cuál; la interfaz nunca toca la base de datos directamente |
+| [Modelo de dominio](docs/uml.md#2-modelo-de-dominio) | Las entidades del negocio y sus asociaciones |
+| [Modelo físico de datos](docs/uml.md#3-modelo-físico-de-datos) | Tablas, tipos, claves, restricciones e índices |
+| [Clases: infraestructura y datos](docs/uml.md#4-clases-infraestructura-y-acceso-a-datos) | Configuración, conexión, modelo y repositorios |
+| [Clases: servicios](docs/uml.md#5-clases-servicios-y-excepciones) | Reglas de negocio y jerarquía de errores |
+| [Clases: interfaz](docs/uml.md#6-clases-interfaz-de-usuario) | Ventanas, formularios y sus widgets |
+| [Casos de uso](docs/uml.md#7-casos-de-uso) | Qué puede hacer el usuario, con la ficha de cada caso |
+| [Secuencia: confirmar una venta](docs/uml.md#83-confirmar-una-venta) | La operación más importante: transacción, bloqueos y rollback |
+| [Actividad: registrar un movimiento](docs/uml.md#9-diagrama-de-actividad-registrar-un-movimiento) | Todas las decisiones de `register_movement` |
+| [Estados: producto](docs/uml.md#10-diagrama-de-estados-producto) | Ciclo de vida de un producto |
+| [Despliegue](docs/uml.md#11-diagrama-de-despliegue) | Dónde corre cada pieza |
 
 ## Modelo de datos
 
-### Diagrama entidad-relación
+La base tiene seis tablas. El diagrama entidad-relación completo, con tipos, claves foráneas, restricciones e índices, está en [docs/uml.md](docs/uml.md#3-modelo-físico-de-datos).
 
-```mermaid
-erDiagram
-    categories ||--o{ products : "clasifica"
-    customers |o--o{ sales : "realiza"
-    sales ||--|{ sale_items : "contiene"
-    products ||--o{ sale_items : "se vende en"
-    products ||--o{ inventory_movements : "tiene historial"
-    sales |o--o{ inventory_movements : "origina salidas"
-
-    categories {
-        int id PK
-        varchar name UK
-        text description
-    }
-
-    products {
-        int id PK
-        int category_id FK
-        varchar sku UK
-        varchar name
-        numeric price
-        int stock
-        int min_stock
-        boolean active
-        timestamptz created_at
-    }
-
-    customers {
-        int id PK
-        varchar name
-        varchar email UK
-    }
-
-    sales {
-        int id PK
-        int customer_id FK
-        timestamptz sale_date
-        numeric total
-    }
-
-    sale_items {
-        int sale_id PK, FK
-        int product_id PK, FK
-        int quantity
-        numeric unit_price
-    }
-
-    inventory_movements {
-        int id PK
-        int product_id FK
-        int sale_id FK
-        varchar movement_type
-        int quantity
-        varchar reason
-        timestamptz movement_date
-    }
-```
-
-### Relaciones
-
-| Relación | Cardinalidad | Clave foránea | ¿Obligatoria? | Significado |
-|---|---|---|---|---|
-| `categories` → `products` | 1 : N | `products.category_id` | Sí | Todo producto pertenece a una categoría |
-| `customers` → `sales` | 0..1 : N | `sales.customer_id` | No | Una venta puede no tener cliente (`NULL`) |
-| `sales` → `sale_items` | 1 : N | `sale_items.sale_id` | Sí | Una venta tiene al menos un ítem (lo exige `create_sale`) |
-| `products` → `sale_items` | 1 : N | `sale_items.product_id` | Sí | Cada ítem corresponde a un producto |
-| `sales` ↔ `products` | N : M | tabla asociativa `sale_items` | — | Una venta incluye varios productos y un producto aparece en varias ventas; la clave primaria compuesta `(sale_id, product_id)` impide repetir un producto en la misma venta |
-| `products` → `inventory_movements` | 1 : N | `inventory_movements.product_id` | Sí | Historial completo de cada producto |
-| `sales` → `inventory_movements` | 0..1 : N | `inventory_movements.sale_id` | No | Las salidas por venta apuntan a su venta; las entradas y ajustes no |
-
-Ninguna clave foránea usa `ON DELETE CASCADE`: la base no permite borrar un producto o una venta que tengan registros relacionados.
-
-### Restricciones de integridad
-
-| Tabla | Restricción |
-|---|---|
-| `categories` | `name` único |
-| `products` | `sku` único; `price >= 0`; `stock >= 0`; `min_stock >= 0`; `active` por defecto `TRUE` |
-| `customers` | `email` único (admite `NULL`) |
-| `sales` | `total >= 0` |
-| `sale_items` | `quantity > 0`; `unit_price >= 0`; clave primaria compuesta |
-| `inventory_movements` | `movement_type` solo `IN`, `OUT` o `ADJUST`; la cantidad debe ser positiva en `IN`, negativa en `OUT` y distinta de cero en `ADJUST` |
-
-### Índices
-
-| Índice | Columna | Para qué sirve |
+| Tabla | Contenido | Relaciones principales |
 |---|---|---|
-| `idx_products_category` | `products.category_id` | Reportes por categoría y uniones con `categories` |
-| `idx_sales_date` | `sales.sale_date` | Reporte de ventas por día |
-| `idx_sale_items_product` | `sale_items.product_id` | Productos más vendidos |
-| `idx_movements_product` | `inventory_movements.product_id` | Historial de un producto |
+| `categories` | Categorías de productos | 1 : N con `products` |
+| `products` | Productos, precio, stock y stock mínimo | Pertenece a una categoría |
+| `customers` | Clientes (opcionales en una venta) | 0..1 : N con `sales` |
+| `sales` | Cabecera de cada venta y su total | Tiene uno o más `sale_items` |
+| `sale_items` | Líneas de venta, con el precio del momento | Tabla asociativa entre `sales` y `products` |
+| `inventory_movements` | Historial de entradas, salidas y ajustes | Pertenece a un producto y, a veces, a una venta |
 
 ## Decisiones de diseño
 
@@ -418,7 +170,9 @@ stockpilot/
 │   ├── schema.sql                 tablas, restricciones e índices
 │   ├── seed.sql                   datos de ejemplo
 │   └── reports.sql                consultas de reportes
-├── docs/screenshots/
+├── docs/
+│   ├── uml.md                     documentación UML completa
+│   └── screenshots/
 ├── .env.example
 ├── pytest.ini
 └── requirements.txt
@@ -509,4 +263,4 @@ Las pruebas se ejecutan contra la base de datos real y **deshacen todo al termin
 
 ## Autor
 
-Juan Esteban Fernández Segura · [GitHub](https://github.com/juanesz333)
+Juan Esteban Fernández · [GitHub](https://github.com/juanesz333)
